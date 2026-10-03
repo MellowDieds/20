@@ -54,27 +54,3 @@ Uygulama, **Amerikan Oftalmoloji Akademisi (AAO)** ve **Amerikan Optometri Derne
 
 ---
 
-## 🚀 GitHub'dan Kurulum ve Derleme (Build & Install)
-
-### 1. Depoyu Klonlayın
-```bash
-git clone https://github.com/KULLANICI_ADINIZ/goz-sagligi-20-20-20.git
-cd goz-sagligi-20-20-20
-```
-
-### 2. APK Dosyasını Oluşturun
-Bilgisayarınızda Android Studio veya terminal üzerinden:
-```bash
-# Debug APK oluşturmak için:
-./gradlew assembleDebug
-```
-Oluşturulan APK dosyası şu dizinde yer alır:
-`app/build/outputs/apk/debug/app-debug.apk`
-
-### 3. Telefona Kurulum
-- **Yöntem A (USB ile / ADB):**
-  ```bash
-  adb install app/build/outputs/apk/debug/app-debug.apk
-  ```
-- **Yöntem B (Doğrudan Telefona Atma):**
-  `app-debug.apk` dosyasını Google Drive, WhatsApp veya USB kablosuyla telefonunuza gönderip üzerine dokunarak yükleyebilirsiniz (Gerektiğinde "Bilinmeyen kaynaklardan yükleme" iznini açın).
