@@ -66,6 +66,24 @@ class UserPreferences(context: Context) {
         _autoStartOnBoot.value = enabled
     }
 
+    fun getSavedElapsedSeconds(): Int = prefs.getInt(KEY_SAVED_ELAPSED_SECONDS, 0)
+
+    fun saveElapsedSeconds(seconds: Int) {
+        prefs.edit().putInt(KEY_SAVED_ELAPSED_SECONDS, seconds).apply()
+    }
+
+    fun getSavedSnoozeCount(): Int = prefs.getInt(KEY_SAVED_SNOOZE_COUNT, 0)
+
+    fun saveSnoozeCount(count: Int) {
+        prefs.edit().putInt(KEY_SAVED_SNOOZE_COUNT, count).apply()
+    }
+
+    fun isSavedAlertActive(): Boolean = prefs.getBoolean(KEY_SAVED_ALERT_ACTIVE, false)
+
+    fun saveAlertActive(active: Boolean) {
+        prefs.edit().putBoolean(KEY_SAVED_ALERT_ACTIVE, active).apply()
+    }
+
     companion object {
         private const val KEY_INTERVAL_MINUTES = "interval_minutes"
         private const val KEY_SNOOZE_MINUTES = "snooze_minutes"
@@ -74,6 +92,9 @@ class UserPreferences(context: Context) {
         private const val KEY_TEST_MODE = "test_mode"
         private const val KEY_SOUND_ENABLED = "sound_enabled"
         private const val KEY_AUTO_START = "auto_start_on_boot"
+        private const val KEY_SAVED_ELAPSED_SECONDS = "saved_elapsed_seconds"
+        private const val KEY_SAVED_SNOOZE_COUNT = "saved_snooze_count"
+        private const val KEY_SAVED_ALERT_ACTIVE = "saved_alert_active"
 
         @Volatile
         private var INSTANCE: UserPreferences? = null

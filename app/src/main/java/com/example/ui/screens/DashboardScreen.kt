@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
@@ -54,6 +55,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,6 +80,7 @@ import com.example.ui.EyeCareUiState
 import com.example.ui.theme.CalmMintGlow
 import com.example.ui.theme.SereneSky
 import com.example.ui.theme.SoftAmber
+import com.example.util.PowerHelper
 
 @Composable
 fun DashboardScreen(
@@ -109,6 +112,10 @@ fun DashboardScreen(
         hasNotificationPermission = isGranted
     }
 
+    var isBatteryOptimizedIgnored by remember {
+        mutableStateOf(PowerHelper.isBatteryOptimizationIgnored(context))
+    }
+
     val infiniteTransition = rememberInfiniteTransition(label = "pulse_screen_on")
     val pulseAlpha by infiniteTransition.animateFloat(
         initialValue = 0.4f,
@@ -136,6 +143,16 @@ fun DashboardScreen(
             NotificationPermissionCard(
                 onRequestPermission = {
                     permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            )
+        }
+
+        // Battery Optimization Whitelist Card (prevents Android from killing service in other apps)
+        if (!isBatteryOptimizedIgnored) {
+            BatteryOptimizationCard(
+                onIgnoreBattery = {
+                    PowerHelper.requestIgnoreBatteryOptimization(context)
+                    isBatteryOptimizedIgnored = PowerHelper.isBatteryOptimizationIgnored(context)
                 }
             )
         }
@@ -278,6 +295,55 @@ private fun NotificationPermissionCard(onRequestPermission: () -> Unit) {
                 onClick = onRequestPermission,
                 shape = RoundedCornerShape(10.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = SoftAmber)
+            ) {
+                Text("İzin Ver", fontSize = 12.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun BatteryOptimizationCard(onIgnoreBattery: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("battery_optimization_card"),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+        )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = Icons.Default.BatteryChargingFull,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(28.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Arka Planda Kesintisiz Çalışma",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "Diğer uygulamaları (YouTube, oyunlar, sosyal medya) kullanırken sayacın durmaması için pil kısıtlamasını kaldırın.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = onIgnoreBattery,
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
                 Text("İzin Ver", fontSize = 12.sp)
             }

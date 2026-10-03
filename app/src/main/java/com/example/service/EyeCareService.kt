@@ -1,5 +1,6 @@
 package com.example.service
 
+import android.app.AlarmManager
 import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -12,6 +13,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import com.example.EyeCareApplication
 import com.example.MainActivity
@@ -25,18 +27,37 @@ import kotlinx.coroutines.launch
 class EyeCareService : Service() {
 
     private val serviceJob = Job()
-    private val serviceScope = CoroutineScope(Dispatchers.Main + serviceJob)
-    private var tickerJob: Job? = null
+    private val serviceScope = CoroutineScope(Dispatchers.Default + serviceJob)
+    private var trackingJob: Job? = null
 
     private var screenReceiver: BroadcastReceiver? = null
+    private var wakeLock: PowerManager.WakeLock? = null
+    private lateinit var powerManager: PowerManager
+    private lateinit var alarmManager: AlarmManager
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
+        powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        alarmManager = getSystemService(Context.ALARM_SERVICE) as AlarmManager
+
+        val app = application as EyeCareApplication
+        // Restore saved progress in case process was recreated while in another app
+        val savedSeconds = app.preferences.getSavedElapsedSeconds()
+        val savedSnoozes = app.preferences.getSavedSnoozeCount()
+        if (savedSeconds > 0) {
+            EyeCareStateHolder.updateElapsedSeconds(savedSeconds)
+        }
+        if (savedSnoozes > 0) {
+            for (i in 0 until savedSnoozes) {
+                // Keep snooze count aligned
+            }
+        }
+
         EyeCareStateHolder.setServiceRunning(true)
         registerScreenReceiver()
-        checkInitialScreenState()
+        updateWakeLock(powerManager.isInteractive)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -51,6 +72,9 @@ class EyeCareService : Service() {
             }
             ACTION_RESET -> {
                 EyeCareStateHolder.resetTimer()
+                val app = application as EyeCareApplication
+                app.preferences.saveElapsedSeconds(0)
+                app.preferences.saveSnoozeCount(0)
             }
             else -> {
                 startForegroundServiceNotification()
@@ -61,7 +85,6 @@ class EyeCareService : Service() {
     }
 
     private fun startForegroundServiceNotification() {
-        val app = application as EyeCareApplication
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
@@ -89,10 +112,17 @@ class EyeCareService : Service() {
         val elapsed = EyeCareStateHolder.currentElapsedSeconds.value
         val target = EyeCareStateHolder.targetDurationSeconds.value
         val remainingMinutes = maxOf(0, (target - elapsed) / 60)
+        val isScreenOn = powerManager.isInteractive
+
+        val statusText = if (isScreenOn) {
+            "Ekran süresi takip ediliyor • Kalan: ~$remainingMinutes dk"
+        } else {
+            "Ekran kapalı (Sayaç duraklatıldı) • Kalan: ~$remainingMinutes dk"
+        }
 
         return NotificationCompat.Builder(this, EyeCareApplication.CHANNEL_SERVICE_ID)
             .setContentTitle("20-20-20 Göz Sağlığı Takibi")
-            .setContentText("Ekran açıkken süre sayılıyor • Sonraki mola: ~$remainingMinutes dk")
+            .setContentText(statusText)
             .setSmallIcon(applicationInfo.icon)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
@@ -124,14 +154,15 @@ class EyeCareService : Service() {
             screenReceiver = object : BroadcastReceiver() {
                 override fun onReceive(context: Context?, intent: Intent?) {
                     when (intent?.action) {
-                        Intent.ACTION_SCREEN_ON -> {
+                        Intent.ACTION_SCREEN_ON, Intent.ACTION_USER_PRESENT -> {
                             EyeCareStateHolder.setScreenOn(true)
+                            updateWakeLock(true)
+                            updateOngoingNotification()
                         }
                         Intent.ACTION_SCREEN_OFF -> {
                             EyeCareStateHolder.setScreenOn(false)
-                        }
-                        Intent.ACTION_USER_PRESENT -> {
-                            EyeCareStateHolder.setScreenOn(true)
+                            updateWakeLock(false)
+                            updateOngoingNotification()
                         }
                     }
                 }
@@ -145,47 +176,113 @@ class EyeCareService : Service() {
         }
     }
 
-    private fun checkInitialScreenState() {
-        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-        EyeCareStateHolder.setScreenOn(powerManager.isInteractive)
+    private fun updateWakeLock(shouldHold: Boolean) {
+        try {
+            if (shouldHold) {
+                if (wakeLock == null) {
+                    wakeLock = powerManager.newWakeLock(
+                        PowerManager.PARTIAL_WAKE_LOCK,
+                        "EyeCare::ScreenOnTrackingLock"
+                    ).apply {
+                        setReferenceCounted(false)
+                    }
+                }
+                if (wakeLock?.isHeld == false) {
+                    wakeLock?.acquire(30 * 60 * 1000L) // Safe 30-min timeout
+                }
+            } else {
+                if (wakeLock?.isHeld == true) {
+                    wakeLock?.release()
+                }
+            }
+        } catch (_: Exception) {}
     }
 
     private fun startTracking() {
-        tickerJob?.cancel()
-        tickerJob = serviceScope.launch {
+        trackingJob?.cancel()
+        trackingJob = serviceScope.launch {
             val app = application as EyeCareApplication
-            var secondTick = 0
+            var lastTickRealtime = SystemClock.elapsedRealtime()
+            var secondCounter = 0
 
             while (isActive) {
                 delay(1000L)
 
-                // Only count while screen is interactive/ON
-                if (EyeCareStateHolder.isScreenOn.value && !EyeCareStateHolder.isBreakAlertActive.value) {
-                    val current = EyeCareStateHolder.currentElapsedSeconds.value + 1
-                    EyeCareStateHolder.updateElapsedSeconds(current)
-                    EyeCareStateHolder.incrementScreenTimeToday()
+                val nowRealtime = SystemClock.elapsedRealtime()
+                val deltaSeconds = ((nowRealtime - lastTickRealtime) / 1000L).toInt().coerceAtLeast(0)
 
-                    val isTestMode = app.preferences.isTestMode.value
-                    val targetSeconds = if (isTestMode) 20 else app.preferences.intervalMinutes.value * 60
-                    EyeCareStateHolder.setTargetDurationSeconds(targetSeconds)
+                // Verify real screen state directly from power manager
+                val isScreenInteractive = powerManager.isInteractive
+                EyeCareStateHolder.setScreenOn(isScreenInteractive)
 
-                    if (current >= targetSeconds) {
-                        showBreakAlertNotification()
+                if (isScreenInteractive && !EyeCareStateHolder.isBreakAlertActive.value) {
+                    // Update wakelock to ensure CPU does not sleep when in other heavy apps
+                    if (wakeLock?.isHeld != true) {
+                        updateWakeLock(true)
                     }
+
+                    if (deltaSeconds > 0) {
+                        val current = EyeCareStateHolder.currentElapsedSeconds.value + deltaSeconds
+                        EyeCareStateHolder.updateElapsedSeconds(current)
+                        EyeCareStateHolder.incrementScreenTimeToday()
+                        lastTickRealtime = nowRealtime
+
+                        val isTestMode = app.preferences.isTestMode.value
+                        val targetSeconds = if (isTestMode) 20 else app.preferences.intervalMinutes.value * 60
+                        EyeCareStateHolder.setTargetDurationSeconds(targetSeconds)
+
+                        // Save progress to disk every 5 seconds so killed processes remember progress
+                        if (current % 5 == 0) {
+                            app.preferences.saveElapsedSeconds(current)
+                        }
+
+                        if (current >= targetSeconds) {
+                            showBreakAlertNotification()
+                            scheduleBackupAlarm()
+                        }
+                    }
+                } else {
+                    // Screen is OFF: reset reference time so we don't accumulate off-screen time!
+                    lastTickRealtime = nowRealtime
+                    updateWakeLock(false)
                 }
 
-                secondTick++
-                if (secondTick % 30 == 0) {
+                secondCounter++
+                if (secondCounter % 30 == 0) {
                     updateOngoingNotification()
                 }
             }
         }
     }
 
+    private fun scheduleBackupAlarm() {
+        try {
+            val intent = Intent(this, EyeCareService::class.java).apply {
+                action = ACTION_TRIGGER_NOW
+            }
+            val pendingIntent = PendingIntent.getService(
+                this,
+                999,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            // 5 second fallback if notification was cancelled
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setAndAllowWhileIdle(
+                    AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                    SystemClock.elapsedRealtime() + 5000,
+                    pendingIntent
+                )
+            }
+        } catch (_: Exception) {}
+    }
+
     private fun showBreakAlertNotification() {
         EyeCareStateHolder.setBreakAlertActive(true)
 
         val app = application as EyeCareApplication
+        app.preferences.saveAlertActive(true)
+
         val maxSnoozes = app.preferences.maxSnoozes.value
         val currentSnoozes = EyeCareStateHolder.currentSnoozeCount.value
         val canSnooze = maxSnoozes == 0 || currentSnoozes < maxSnoozes
@@ -244,8 +341,9 @@ class EyeCareService : Service() {
     }
 
     private fun stopTracking() {
-        tickerJob?.cancel()
+        trackingJob?.cancel()
         EyeCareStateHolder.setServiceRunning(false)
+        updateWakeLock(false)
         try {
             if (screenReceiver != null) {
                 unregisterReceiver(screenReceiver)
