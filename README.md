@@ -21,6 +21,18 @@ Ekran kullanımına bağlı dijital göz yorgunluğunu (**Computer Vision Syndro
 
 ---
 
+## 📲 Doğrudan APK İndir & Kur (Telefonunuzdan)
+
+GitHub deponuzdan telefonunuza hemen kurmak için iki kolay yol hazırladık:
+
+### 1. Yol: Doğrudan Depodan APK İndirme
+Depodaki hazır **[`apk/20-20-20-Goz-Sagligi.apk`](apk/20-20-20-Goz-Sagligi.apk)** dosyasına tıklayıp **Download** butonuna basarak doğrudan telefonunuza indirebilir ve hemen yükleyebilirsiniz.
+
+### 2. Yol: Otomatik GitHub Actions & Releases
+Projeye eklenen `.github/workflows/build-apk.yml` sayesinde depoya her kod gönderdiğinizde veya **Actions** sekmesinden *"Run workflow"* dediğinizde GitHub sunucuları otomatik olarak en güncel APK'yı derleyip **Releases** sekmesine ekler.
+
+---
+
 ## 🔬 Bilimsel ve Tıbbi Dayanak
 
 Uygulama, **Amerikan Oftalmoloji Akademisi (AAO)** ve **Amerikan Optometri Derneği (AOA)** tarafından kabul gören *20-20-20 protokolünü* temel alır:
