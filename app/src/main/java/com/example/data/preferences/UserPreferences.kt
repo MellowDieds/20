@@ -31,6 +31,12 @@ class UserPreferences(context: Context) {
     private val _autoStartOnBoot = MutableStateFlow(prefs.getBoolean(KEY_AUTO_START, true))
     val autoStartOnBoot: StateFlow<Boolean> = _autoStartOnBoot.asStateFlow()
 
+    private val _resetOnScreenOff = MutableStateFlow(prefs.getBoolean(KEY_RESET_ON_SCREEN_OFF, true))
+    val resetOnScreenOff: StateFlow<Boolean> = _resetOnScreenOff.asStateFlow()
+
+    private val _githubRepo = MutableStateFlow(prefs.getString(KEY_GITHUB_REPO, DEFAULT_GITHUB_REPO) ?: DEFAULT_GITHUB_REPO)
+    val githubRepo: StateFlow<String> = _githubRepo.asStateFlow()
+
     fun setIntervalMinutes(minutes: Int) {
         prefs.edit().putInt(KEY_INTERVAL_MINUTES, minutes).apply()
         _intervalMinutes.value = minutes
@@ -66,6 +72,11 @@ class UserPreferences(context: Context) {
         _autoStartOnBoot.value = enabled
     }
 
+    fun setResetOnScreenOff(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_RESET_ON_SCREEN_OFF, enabled).apply()
+        _resetOnScreenOff.value = enabled
+    }
+
     fun getSavedElapsedSeconds(): Int = prefs.getInt(KEY_SAVED_ELAPSED_SECONDS, 0)
 
     fun saveElapsedSeconds(seconds: Int) {
@@ -84,7 +95,15 @@ class UserPreferences(context: Context) {
         prefs.edit().putBoolean(KEY_SAVED_ALERT_ACTIVE, active).apply()
     }
 
+    fun setGithubRepo(repo: String) {
+        val trimmed = repo.trim().removePrefix("https://github.com/").removeSuffix("/")
+        prefs.edit().putString(KEY_GITHUB_REPO, trimmed).apply()
+        _githubRepo.value = trimmed
+    }
+
     companion object {
+        const val DEFAULT_GITHUB_REPO = "mellowdieds/20-20-20-Goz-Sagligi"
+        private const val KEY_GITHUB_REPO = "github_repo"
         private const val KEY_INTERVAL_MINUTES = "interval_minutes"
         private const val KEY_SNOOZE_MINUTES = "snooze_minutes"
         private const val KEY_MAX_SNOOZES = "max_snoozes"
@@ -95,6 +114,7 @@ class UserPreferences(context: Context) {
         private const val KEY_SAVED_ELAPSED_SECONDS = "saved_elapsed_seconds"
         private const val KEY_SAVED_SNOOZE_COUNT = "saved_snooze_count"
         private const val KEY_SAVED_ALERT_ACTIVE = "saved_alert_active"
+        private const val KEY_RESET_ON_SCREEN_OFF = "reset_on_screen_off"
 
         @Volatile
         private var INSTANCE: UserPreferences? = null

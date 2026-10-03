@@ -7,8 +7,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.EyeCareApplication
 import com.example.data.db.BreakRecord
+import com.example.data.update.UpdateCheckResult
+import com.example.data.update.UpdateChecker
 import com.example.service.EyeCareService
 import com.example.service.EyeCareStateHolder
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -29,7 +32,11 @@ data class EyeCareUiState(
     val todayCompletedCount: Int = 0,
     val todayRecords: List<BreakRecord> = emptyList(),
     val totalScreenTimeTodaySeconds: Int = 0,
-    val isSoundEnabled: Boolean = false
+    val isSoundEnabled: Boolean = false,
+    val resetOnScreenOff: Boolean = true,
+    val githubRepo: String = "mellowdieds/20-20-20-Goz-Sagligi",
+    val updateCheckResult: UpdateCheckResult = UpdateCheckResult.Idle,
+    val isCheckingUpdate: Boolean = false
 ) {
     val remainingSeconds: Int
         get() = maxOf(0, targetDurationSeconds - currentElapsedSeconds)
@@ -63,7 +70,10 @@ class EyeCareViewModel(application: Application) : AndroidViewModel(application)
     private val repository = app.repository
     private val preferences = app.preferences
 
-    val uiState: StateFlow<EyeCareUiState> = combine(
+    private val _updateCheckResult = MutableStateFlow<UpdateCheckResult>(UpdateCheckResult.Idle)
+    private val _isCheckingUpdate = MutableStateFlow(false)
+
+    private val baseUiState = combine(
         EyeCareStateHolder.currentElapsedSeconds,
         EyeCareStateHolder.targetDurationSeconds,
         EyeCareStateHolder.isScreenOn,
@@ -77,7 +87,8 @@ class EyeCareViewModel(application: Application) : AndroidViewModel(application)
         repository.getTodayCompletedCount(),
         repository.getTodayRecords(),
         EyeCareStateHolder.totalScreenTimeTodaySeconds,
-        preferences.isSoundEnabled
+        preferences.isSoundEnabled,
+        preferences.resetOnScreenOff
     ) { params ->
         val elapsed = params[0] as Int
         val target = params[1] as Int
@@ -94,6 +105,7 @@ class EyeCareViewModel(application: Application) : AndroidViewModel(application)
         val records = params[11] as List<BreakRecord>
         val screenTime = params[12] as Int
         val sound = params[13] as Boolean
+        val resetScreenOff = params[14] as Boolean
 
         EyeCareUiState(
             currentElapsedSeconds = elapsed,
@@ -109,7 +121,21 @@ class EyeCareViewModel(application: Application) : AndroidViewModel(application)
             todayCompletedCount = completedCount,
             todayRecords = records,
             totalScreenTimeTodaySeconds = screenTime,
-            isSoundEnabled = sound
+            isSoundEnabled = sound,
+            resetOnScreenOff = resetScreenOff
+        )
+    }
+
+    val uiState: StateFlow<EyeCareUiState> = combine(
+        baseUiState,
+        _updateCheckResult,
+        _isCheckingUpdate,
+        preferences.githubRepo
+    ) { base, updateResult, isChecking, repo ->
+        base.copy(
+            updateCheckResult = updateResult,
+            isCheckingUpdate = isChecking,
+            githubRepo = repo
         )
     }.stateIn(
         scope = viewModelScope,
@@ -200,6 +226,10 @@ class EyeCareViewModel(application: Application) : AndroidViewModel(application)
         preferences.setSoundEnabled(enabled)
     }
 
+    fun setResetOnScreenOff(enabled: Boolean) {
+        preferences.setResetOnScreenOff(enabled)
+    }
+
     fun consumeExerciseNavigation() {
         EyeCareStateHolder.consumeExerciseNavigation()
     }
@@ -208,5 +238,25 @@ class EyeCareViewModel(application: Application) : AndroidViewModel(application)
         viewModelScope.launch {
             repository.clearHistory()
         }
+    }
+
+    fun checkForUpdates() {
+        if (_isCheckingUpdate.value) return
+        _isCheckingUpdate.value = true
+        _updateCheckResult.value = UpdateCheckResult.Checking
+        viewModelScope.launch {
+            val repo = preferences.githubRepo.value
+            val result = UpdateChecker.checkForUpdates(repo)
+            _updateCheckResult.value = result
+            _isCheckingUpdate.value = false
+        }
+    }
+
+    fun dismissUpdateResult() {
+        _updateCheckResult.value = UpdateCheckResult.Idle
+    }
+
+    fun setGithubRepo(repo: String) {
+        preferences.setGithubRepo(repo)
     }
 }

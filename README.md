@@ -18,6 +18,7 @@ Ekran kullanımına bağlı dijital göz yorgunluğunu (**Computer Vision Syndro
   4. *Avuç İçiyle Isıtma (Palming):* Derin nefes ve göz rahatlatma egzersizi.
 - **⚡ Hızlı Test Modu (20 Saniye):** 20 dakika beklemeden akışı ve bildirimleri saniyeler içinde test etme imkânı.
 - **İstatistik & Kayıt (Room Veritabanı):** Günlük mola sayısı, toplam aktif ekran süresi ve göz rahatlama skoru takibi.
+- **🔄 Uygulama İçi GitHub Güncelleme Denetleyicisi:** Ayarlar sekmesinden tek tıkla GitHub Releases üzerinden yeni sürüm kontrolü yapma, sürüm notlarını inceleme ve doğrudan yeni APK'yı indirip kurma desteği.
 
 ---
 

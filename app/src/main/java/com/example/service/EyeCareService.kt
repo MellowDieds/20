@@ -162,6 +162,15 @@ class EyeCareService : Service() {
                         Intent.ACTION_SCREEN_OFF -> {
                             EyeCareStateHolder.setScreenOn(false)
                             updateWakeLock(false)
+                            val app = application as EyeCareApplication
+                            if (app.preferences.resetOnScreenOff.value) {
+                                EyeCareStateHolder.resetTimer()
+                                app.preferences.saveElapsedSeconds(0)
+                                app.preferences.saveSnoozeCount(0)
+                                app.preferences.saveAlertActive(false)
+                                val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                                notificationManager.cancel(EyeCareApplication.NOTIFICATION_ALERT_ID)
+                            }
                             updateOngoingNotification()
                         }
                     }
@@ -245,6 +254,15 @@ class EyeCareService : Service() {
                     // Screen is OFF: reset reference time so we don't accumulate off-screen time!
                     lastTickRealtime = nowRealtime
                     updateWakeLock(false)
+                    if (app.preferences.resetOnScreenOff.value && EyeCareStateHolder.currentElapsedSeconds.value > 0) {
+                        EyeCareStateHolder.resetTimer()
+                        app.preferences.saveElapsedSeconds(0)
+                        app.preferences.saveSnoozeCount(0)
+                        app.preferences.saveAlertActive(false)
+                        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                        notificationManager.cancel(EyeCareApplication.NOTIFICATION_ALERT_ID)
+                        updateOngoingNotification()
+                    }
                 }
 
                 secondCounter++

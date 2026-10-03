@@ -434,8 +434,15 @@ private fun MainTimerCard(
                             )
                     )
                     Spacer(modifier = Modifier.width(8.dp))
+                    val statusText = if (uiState.isScreenOn) {
+                        "📱 Ekran Açık: Süre Sayılıyor"
+                    } else if (uiState.resetOnScreenOff) {
+                        "🌙 Ekran Kapalı: Sayaç Sıfırlandı"
+                    } else {
+                        "🌙 Ekran Kapalı: Sayaç Duraklatıldı"
+                    }
                     Text(
-                        text = if (uiState.isScreenOn) "📱 Ekran Açık: Süre Sayılıyor" else "🌙 Ekran Kapalı: Sayaç Duraklatıldı",
+                        text = statusText,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.Medium,
                         color = if (uiState.isScreenOn) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant

@@ -204,7 +204,11 @@ fun MainContent(viewModel: EyeCareViewModel) {
                         onSetSnoozeMinutes = { viewModel.setSnoozeMinutes(it) },
                         onSetMaxSnoozes = { viewModel.setMaxSnoozes(it) },
                         onToggleTestMode = { viewModel.toggleTestMode(it) },
-                        onToggleSound = { viewModel.setSoundEnabled(it) }
+                        onToggleSound = { viewModel.setSoundEnabled(it) },
+                        onToggleResetOnScreenOff = { viewModel.setResetOnScreenOff(it) },
+                        onCheckForUpdates = { viewModel.checkForUpdates() },
+                        onDismissUpdateResult = { viewModel.dismissUpdateResult() },
+                        onSetGithubRepo = { viewModel.setGithubRepo(it) }
                     )
                 }
             }
