@@ -1,0 +1,6 @@
+{
+  "name": "20-20-20 Göz Sağlığı",
+  "description": "Ekran süresine bağlı göz yorgunluğunu azaltan nazik 20-20-20 mola hatırlatıcısı ve animasyonlu egzersiz rehberi.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
