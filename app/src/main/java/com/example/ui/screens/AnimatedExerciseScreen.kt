@@ -1,7 +1,7 @@
 package com.example.ui.screens
 
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -9,8 +9,8 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,13 +31,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.RemoveRedEye
 import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.Spa
-import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -46,11 +52,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -64,29 +71,55 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.ui.theme.CalmMintGlow
-import com.example.ui.theme.SereneSky
-import com.example.ui.theme.SoftAmber
+import com.example.util.VibrationHelper
 import kotlinx.coroutines.delay
-import kotlin.math.cos
-import kotlin.math.sin
 
-enum class ExerciseStep(val title: String, val icon: @Composable () -> Unit) {
-    LOOK_AWAY("Uzağa Bak", { Icon(Icons.Default.RemoveRedEye, contentDescription = null, modifier = Modifier.size(18.dp)) }),
-    BLINKING("Göz Kırpma", { Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(18.dp)) }),
-    EYE_ROLL("Kas Esnetme", { Icon(Icons.Default.Spa, contentDescription = null, modifier = Modifier.size(18.dp)) }),
-    PALMING("Avuç Isıtma", { Icon(Icons.Default.SelfImprovement, contentDescription = null, modifier = Modifier.size(18.dp)) })
+enum class ExerciseType(
+    val title: String,
+    val durationLabel: String,
+    val icon: ImageVector,
+    val medicalBenefit: String
+) {
+    LOOK_AWAY(
+        title = "Uzağa Bakış",
+        durationLabel = "20 Sn",
+        icon = Icons.Default.RemoveRedEye,
+        medicalBenefit = "Sürekli ekrana bakmaktan kramp giren siliyer odak kaslarını gevşetir, göz yorgunluğu baş ağrısını anında engeller."
+    ),
+    BLINKING(
+        title = "Kırpma Masajı",
+        durationLabel = "30 Sn",
+        icon = Icons.Default.WaterDrop,
+        medicalBenefit = "Meibomian yağ bezlerini uyararak gözün kornea yüzeyini nemlendirir, yanma, batma ve kuruluk hissini yok eder."
+    ),
+    STRETCH(
+        title = "4 Yönlü Esnetme",
+        durationLabel = "30 Sn",
+        icon = Icons.Default.ZoomOutMap,
+        medicalBenefit = "Sabit noktaya bakmaktan tutulan 6 ekstraoküler göz kasını esnetir, göz arkasındaki baskı ve zonklamayı giderir."
+    ),
+    NEAR_FAR(
+        title = "Yakın-Uzak Odak",
+        durationLabel = "30 Sn",
+        icon = Icons.Default.Spa,
+        medicalBenefit = "Göz merceğinin odaklanma refleksini tazeler, ekrandan kalktıktan sonra oluşan geçici bulanık görmeyi (yalancı miyopi) çözer."
+    ),
+    PALMING(
+        title = "Sıcak Palming",
+        durationLabel = "30 Sn",
+        icon = Icons.Default.SelfImprovement,
+        medicalBenefit = "Sıcaklık ve zifiri karanlık ile retinadaki fotoreseptörleri sıfırlar, göz sinirini derinlemesine dinlendirir."
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -96,8 +129,9 @@ fun AnimatedExerciseScreen(
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var currentStep by remember { mutableStateOf(ExerciseStep.LOOK_AWAY) }
+    var selectedExercise by remember { mutableStateOf(ExerciseType.LOOK_AWAY) }
     var isFinished by remember { mutableStateOf(false) }
+    var totalSecondsSpent by remember { mutableIntStateOf(0) }
 
     Scaffold(
         modifier = modifier.testTag("animated_exercise_screen"),
@@ -106,12 +140,12 @@ fun AnimatedExerciseScreen(
                 title = {
                     Column {
                         Text(
-                            text = "20-20-20 Mola Rehberi",
+                            text = "Klinik Göz Dinlendirme Rehberi",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = "Eğitici Göz Dinlendirme Animasyonu",
+                            text = "20-20-20 & Göz Kuruluğu Egzersizleri",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -141,59 +175,98 @@ fun AnimatedExerciseScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Step Tabs
-            TabRow(
-                selectedTabIndex = currentStep.ordinal,
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                ExerciseStep.values().forEach { step ->
-                    Tab(
-                        selected = currentStep == step,
-                        onClick = { currentStep = step },
-                        text = {
-                            Text(
-                                text = step.title,
-                                fontSize = 12.sp,
-                                fontWeight = if (currentStep == step) FontWeight.Bold else FontWeight.Normal
-                            )
-                        },
-                        icon = step.icon
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
             if (isFinished) {
                 CompletionCard(
+                    totalSeconds = totalSecondsSpent.coerceAtLeast(20),
                     onFinish = {
-                        onComplete(20, "20-20-20 Tam Döngü")
+                        onComplete(totalSecondsSpent.coerceAtLeast(20), "Göz Rahatlatma Seansı")
                         onClose()
                     }
                 )
             } else {
+                // Exercise Tabs
+                ScrollableTabRow(
+                    selectedTabIndex = selectedExercise.ordinal,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    edgePadding = 12.dp,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    ExerciseType.values().forEach { ex ->
+                        Tab(
+                            selected = selectedExercise == ex,
+                            onClick = { selectedExercise = ex },
+                            text = {
+                                Text(
+                                    text = ex.title,
+                                    fontSize = 12.sp,
+                                    fontWeight = if (selectedExercise == ex) FontWeight.Bold else FontWeight.Normal
+                                )
+                            },
+                            icon = {
+                                Icon(
+                                    imageVector = ex.icon,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Exercise Content
                 AnimatedContent(
-                    targetState = currentStep,
-                    label = "exercise_step_content"
-                ) { step ->
-                    when (step) {
-                        ExerciseStep.LOOK_AWAY -> LookAwayExercise(
-                            onNextStep = { currentStep = ExerciseStep.BLINKING },
-                            onFinishRoutine = { isFinished = true }
+                    targetState = selectedExercise,
+                    label = "exercise_transition"
+                ) { current ->
+                    when (current) {
+                        ExerciseType.LOOK_AWAY -> LookAwayInteractiveExercise(
+                            onComplete = {
+                                totalSecondsSpent += 20
+                                selectedExercise = ExerciseType.BLINKING
+                            },
+                            onFinishSession = {
+                                totalSecondsSpent += 20
+                                isFinished = true
+                            }
                         )
-                        ExerciseStep.BLINKING -> BlinkingExercise(
-                            onNextStep = { currentStep = ExerciseStep.EYE_ROLL },
-                            onPrevStep = { currentStep = ExerciseStep.LOOK_AWAY }
+                        ExerciseType.BLINKING -> BlinkingInteractiveExercise(
+                            onComplete = {
+                                totalSecondsSpent += 30
+                                selectedExercise = ExerciseType.STRETCH
+                            },
+                            onFinishSession = {
+                                totalSecondsSpent += 30
+                                isFinished = true
+                            }
                         )
-                        ExerciseStep.EYE_ROLL -> EyeRollExercise(
-                            onNextStep = { currentStep = ExerciseStep.PALMING },
-                            onPrevStep = { currentStep = ExerciseStep.BLINKING }
+                        ExerciseType.STRETCH -> StretchInteractiveExercise(
+                            onComplete = {
+                                totalSecondsSpent += 30
+                                selectedExercise = ExerciseType.NEAR_FAR
+                            },
+                            onFinishSession = {
+                                totalSecondsSpent += 30
+                                isFinished = true
+                            }
                         )
-                        ExerciseStep.PALMING -> PalmingExercise(
-                            onFinish = { isFinished = true },
-                            onPrevStep = { currentStep = ExerciseStep.EYE_ROLL }
+                        ExerciseType.NEAR_FAR -> NearFarInteractiveExercise(
+                            onComplete = {
+                                totalSecondsSpent += 30
+                                selectedExercise = ExerciseType.PALMING
+                            },
+                            onFinishSession = {
+                                totalSecondsSpent += 30
+                                isFinished = true
+                            }
+                        )
+                        ExerciseType.PALMING -> PalmingInteractiveExercise(
+                            onFinishSession = {
+                                totalSecondsSpent += 30
+                                isFinished = true
+                            }
                         )
                     }
                 }
@@ -205,13 +278,15 @@ fun AnimatedExerciseScreen(
 }
 
 /**
- * 1. Step: Look 20 feet away for 20 seconds.
+ * 1. 20-20-20 Look Away Exercise
+ * Focus away from the screen for 20 seconds. Haptic feedback tells the user when it's done so they DON'T have to stare at their screen!
  */
 @Composable
-fun LookAwayExercise(
-    onNextStep: () -> Unit,
-    onFinishRoutine: () -> Unit
+fun LookAwayInteractiveExercise(
+    onComplete: () -> Unit,
+    onFinishSession: () -> Unit
 ) {
+    val context = LocalContext.current
     var secondsLeft by remember { mutableIntStateOf(20) }
     var isRunning by remember { mutableStateOf(true) }
 
@@ -219,31 +294,464 @@ fun LookAwayExercise(
         if (isRunning && secondsLeft > 0) {
             delay(1000L)
             secondsLeft--
+            if (secondsLeft == 0) {
+                VibrationHelper.vibrateCompletion(context)
+            }
         }
     }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "pulse_rings")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 0.8f,
-        targetValue = 1.3f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2400, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse_scale"
-    )
+    ExerciseContainer(
+        title = "1. Uzağa Bakış (20-20-20 Kuralı)",
+        instruction = "Gözlerinizi ekrandan kaldırın! En az 6 metre (20 feet) uzaktaki pencereden dışarı, ağaca veya odanın en uzak noktasına bakın.",
+        hint = "📳 Süre bittiğinde telefonunuz titreyecektir. Ekrana bakmanıza gerek yoktur!",
+        benefit = ExerciseType.LOOK_AWAY.medicalBenefit
+    ) {
+        // Visual Countdown Display
+        Box(
+            modifier = Modifier
+                .size(200.dp)
+                .clip(CircleShape)
+                .background(
+                    Brush.radialGradient(
+                        listOf(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            MaterialTheme.colorScheme.surface
+                        )
+                    )
+                )
+                .border(4.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.6f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                if (secondsLeft > 0) {
+                    Text(
+                        text = "$secondsLeft",
+                        style = MaterialTheme.typography.displayLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "saniye uzağa bakın",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(54.dp)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Harika! Kaslar Gevşedi ✨",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
 
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val tealGlow = CalmMintGlow
-    val skyColor = SereneSky
+        Spacer(modifier = Modifier.height(16.dp))
 
+        // Controls
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            FilledTonalButton(
+                onClick = { isRunning = !isRunning },
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(
+                    imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(if (isRunning) "Duraklat" else "Devam Et")
+            }
+
+            FilledTonalButton(
+                onClick = {
+                    secondsLeft = 20
+                    isRunning = true
+                },
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Yeniden Başlat")
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ActionButtons(
+            onFinishSession = onFinishSession,
+            onNext = onComplete,
+            nextLabel = "Sonraki: Kırpma Masajı 👉"
+        )
+    }
+}
+
+/**
+ * 2. Blinking & Meibomian Gland Refresh
+ * 3-phase blinking: Close (2s) -> Gently squeeze (2s) -> Open (2s)
+ */
+@Composable
+fun BlinkingInteractiveExercise(
+    onComplete: () -> Unit,
+    onFinishSession: () -> Unit
+) {
+    val context = LocalContext.current
+    var currentPhase by remember { mutableIntStateOf(0) } // 0: Kapat, 1: Nazikçe Sık, 2: Aç ve Gevşet
+    var repetition by remember { mutableIntStateOf(1) }
+    val maxRepetitions = 5
+    var isDone by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isDone) {
+        if (!isDone) {
+            while (repetition <= maxRepetitions) {
+                // Phase 0: Close
+                currentPhase = 0
+                VibrationHelper.vibrateStepChange(context)
+                delay(2000L)
+
+                // Phase 1: Squeeze
+                currentPhase = 1
+                VibrationHelper.vibrateStepChange(context)
+                delay(2000L)
+
+                // Phase 2: Open
+                currentPhase = 2
+                VibrationHelper.vibrateStepChange(context)
+                delay(2000L)
+
+                repetition++
+            }
+            isDone = true
+            VibrationHelper.vibrateCompletion(context)
+        }
+    }
+
+    ExerciseContainer(
+        title = "2. Bilinçli Kırpma & Gözyaşı Masajı",
+        instruction = "Ekrana odaklanırken göz kırpma refleksimiz %66 azalır. Bu 3 aşamalı döngü gözün nem tabakasını yeniler.",
+        hint = "💧 Tekrar: ${repetition.coerceAtMost(maxRepetitions)} / $maxRepetitions",
+        benefit = ExerciseType.BLINKING.medicalBenefit
+    ) {
+        val phaseText = when (currentPhase) {
+            0 -> "1. Gözlerini Nazikçe KAPAT 😌"
+            1 -> "2. Göz Kapaklarını Hafifçe SIK (Bezleri uyar) 💆"
+            else -> "3. Gözlerini AÇ ve Gevşet ✨"
+        }
+
+        val phaseColor by animateColorAsState(
+            targetValue = when (currentPhase) {
+                0 -> MaterialTheme.colorScheme.secondary
+                1 -> MaterialTheme.colorScheme.tertiary
+                else -> MaterialTheme.colorScheme.primary
+            },
+            label = "phase_color"
+        )
+
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = phaseColor.copy(alpha = 0.15f)),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = if (isDone) "Gözyaşı Tabakası Yenilendi! 💧" else phaseText,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = phaseColor,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                LinearProgressIndicator(
+                    progress = { repetition.toFloat() / maxRepetitions },
+                    modifier = Modifier
+                        .fillMaxWidth(0.7f)
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp)),
+                    color = phaseColor
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ActionButtons(
+            onFinishSession = onFinishSession,
+            onNext = onComplete,
+            nextLabel = "Sonraki: 4 Yönlü Esnetme 👉"
+        )
+    }
+}
+
+/**
+ * 3. 4-Directional Extraocular Muscle Stretch
+ */
+@Composable
+fun StretchInteractiveExercise(
+    onComplete: () -> Unit,
+    onFinishSession: () -> Unit
+) {
+    val context = LocalContext.current
+    // 0: Yukarı, 1: Aşağı, 2: Sola, 3: Sağa
+    var directionIndex by remember { mutableIntStateOf(0) }
+    var secondsInDirection by remember { mutableIntStateOf(3) }
+    var isDone by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isDone) {
+        if (!isDone) {
+            for (dir in 0..3) {
+                directionIndex = dir
+                VibrationHelper.vibrateStepChange(context)
+                for (sec in 3 downTo 1) {
+                    secondsInDirection = sec
+                    delay(1000L)
+                }
+            }
+            isDone = true
+            VibrationHelper.vibrateCompletion(context)
+        }
+    }
+
+    val (directionName, directionIcon) = when (directionIndex) {
+        0 -> "YUKARI BAKIN ⬆️" to Icons.Default.KeyboardArrowUp
+        1 -> "AŞAĞI BAKIN ⬇️" to Icons.Default.KeyboardArrowDown
+        2 -> "SOLA BAKIN ⬅️" to Icons.Default.KeyboardArrowLeft
+        else -> "SAĞA BAKIN ➡️" to Icons.Default.KeyboardArrowRight
+    }
+
+    ExerciseContainer(
+        title = "3. 4 Yönlü Göz Kası Esnetme",
+        instruction = "Başınızı kesinlikle çevirmeyin! Sadece göz bebeklerinizle gösterilen yöne en uzağa bakın.",
+        hint = "🎯 6 ekstraoküler göz kasının tutulmasını çözer.",
+        benefit = ExerciseType.STRETCH.medicalBenefit
+    ) {
+        Box(
+            modifier = Modifier
+                .size(180.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
+                .border(3.dp, MaterialTheme.colorScheme.primary, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = directionIcon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(56.dp)
+                )
+                Text(
+                    text = directionName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "$secondsInDirection sn",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ActionButtons(
+            onFinishSession = onFinishSession,
+            onNext = onComplete,
+            nextLabel = "Sonraki: Yakın-Uzak Odak 👉"
+        )
+    }
+}
+
+/**
+ * 4. Near-Far Accommodation Flexibility Exercise
+ */
+@Composable
+fun NearFarInteractiveExercise(
+    onComplete: () -> Unit,
+    onFinishSession: () -> Unit
+) {
+    val context = LocalContext.current
+    var isNear by remember { mutableStateOf(true) }
+    var cycleCount by remember { mutableIntStateOf(1) }
+    val maxCycles = 4
+    var isDone by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isDone) {
+        if (!isDone) {
+            while (cycleCount <= maxCycles) {
+                isNear = true
+                VibrationHelper.vibrateStepChange(context)
+                delay(3000L)
+
+                isNear = false
+                VibrationHelper.vibrateStepChange(context)
+                delay(3000L)
+
+                cycleCount++
+            }
+            isDone = true
+            VibrationHelper.vibrateCompletion(context)
+        }
+    }
+
+    ExerciseContainer(
+        title = "4. Yakın-Uzak Odak Atlama",
+        instruction = "Başparmağınızı burnunuzdan 20 cm uzağa tutun.",
+        hint = "Döngü: ${cycleCount.coerceAtMost(maxCycles)} / $maxCycles",
+        benefit = ExerciseType.NEAR_FAR.medicalBenefit
+    ) {
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isNear) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.tertiaryContainer
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = if (isNear) "🔍 PARMAĞINA ODAKLAN" else "🏔️ EN UZAK NOKTAYA ODAKLAN",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isNear) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onTertiaryContainer
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = if (isNear)
+                        "Tırnağının kenar çizgilerini net görene kadar dikkatlice bak (3 sn)."
+                    else
+                        "Parmağının arkasından odanın en uzak noktasına veya gökyüzüne bak (3 sn).",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        ActionButtons(
+            onFinishSession = onFinishSession,
+            onNext = onComplete,
+            nextLabel = "Sonraki: Sıcak Palming 👉"
+        )
+    }
+}
+
+/**
+ * 5. Warm Palming Exercise
+ */
+@Composable
+fun PalmingInteractiveExercise(
+    onFinishSession: () -> Unit
+) {
+    val context = LocalContext.current
+    var isWarmingHands by remember { mutableStateOf(true) }
+    var secondsLeft by remember { mutableIntStateOf(10) }
+
+    LaunchedEffect(isWarmingHands) {
+        if (isWarmingHands) {
+            secondsLeft = 10
+            while (secondsLeft > 0) {
+                delay(1000L)
+                secondsLeft--
+            }
+            isWarmingHands = false
+            VibrationHelper.vibrateCompletion(context)
+            secondsLeft = 20
+            while (secondsLeft > 0) {
+                delay(1000L)
+                secondsLeft--
+            }
+            VibrationHelper.vibrateCompletion(context)
+        }
+    }
+
+    ExerciseContainer(
+        title = "5. Sıcak Avuç İçi Masajı (Palming)",
+        instruction = if (isWarmingHands)
+            "Ellerinizi 10 saniye boyunca hızlıca birbirine sürterek avuç içlerinizi ısıtın! 🔥"
+        else
+            "Sıcak avuçlarınızı gözlerinizin üzerine kubbe şeklinde kapatın (baskı yapmayın). Zifiri karanlığı ve sıcaklığı hissedin. 🌌",
+        hint = "🧘 Fotoreseptör hücrelerini sıfırlar ve göz sinirini sakinleştirir.",
+        benefit = ExerciseType.PALMING.medicalBenefit
+    ) {
+        Box(
+            modifier = Modifier
+                .size(190.dp)
+                .clip(CircleShape)
+                .background(
+                    if (isWarmingHands)
+                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
+                    else
+                        Color(0xFF1E1E2E)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = if (isWarmingHands) "🔥 ELLERİNİ SÜRT" else "🌌 DERİN NEFES AL",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isWarmingHands) MaterialTheme.colorScheme.onErrorContainer else Color.White
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "$secondsLeft sn",
+                    style = MaterialTheme.typography.displayMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = if (isWarmingHands) MaterialTheme.colorScheme.error else Color(0xFF89B4FA)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = onFinishSession,
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Seansı Başarıyla Tamamla ✨")
+        }
+    }
+}
+
+@Composable
+fun ExerciseContainer(
+    title: String,
+    instruction: String,
+    hint: String,
+    benefit: String,
+    content: @Composable () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         )
     ) {
         Column(
@@ -253,138 +761,38 @@ fun LookAwayExercise(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "1. Adım: 20 Feet (6 Metre) Uzağa Odaklan",
+                text = title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = instruction,
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurface
             )
 
             Spacer(modifier = Modifier.height(6.dp))
 
             Text(
-                text = "Telefon ekranından gözlerinizi ayırın. Pencereden dışarı veya odanın en uzak köşesine bakın.",
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = hint,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.SemiBold
             )
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Animated Visual Circle with Horizon/Focus
-            Box(
-                modifier = Modifier
-                    .size(240.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(
-                                primaryColor.copy(alpha = 0.15f),
-                                MaterialTheme.colorScheme.surface
-                            )
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                // Canvas with expanding relaxation ripples and distant target
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val center = Offset(size.width / 2f, size.height / 2f)
-                    val baseRadius = size.width / 3f
-
-                    // Outer pulse ring
-                    drawCircle(
-                        color = tealGlow.copy(alpha = 0.25f),
-                        radius = baseRadius * pulseScale,
-                        center = center,
-                        style = Stroke(width = 3.dp.toPx())
-                    )
-
-                    // Middle calm ring
-                    drawCircle(
-                        color = skyColor.copy(alpha = 0.35f),
-                        radius = baseRadius * (pulseScale * 0.85f),
-                        center = center,
-                        style = Stroke(width = 4.dp.toPx())
-                    )
-
-                    // Horizon Line & Distant Focus Dot
-                    drawLine(
-                        color = primaryColor.copy(alpha = 0.3f),
-                        start = Offset(20f, center.y),
-                        end = Offset(size.width - 20f, center.y),
-                        strokeWidth = 2.dp.toPx()
-                    )
-
-                    // Distant target dot
-                    drawCircle(
-                        color = primaryColor,
-                        radius = 12.dp.toPx(),
-                        center = center
-                    )
-
-                    // Progress ring around circle
-                    val sweepAngle = ((20 - secondsLeft) / 20f) * 360f
-                    drawArc(
-                        color = primaryColor,
-                        startAngle = -90f,
-                        sweepAngle = sweepAngle,
-                        useCenter = false,
-                        topLeft = Offset(12.dp.toPx(), 12.dp.toPx()),
-                        size = Size(size.width - 24.dp.toPx(), size.height - 24.dp.toPx()),
-                        style = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Round)
-                    )
-                }
-
-                // Center countdown text
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "$secondsLeft",
-                        style = MaterialTheme.typography.displayMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = if (secondsLeft > 0) "saniye" else "Tamamlandı! ✨",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
+            content()
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Timer controls
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                FilledTonalButton(
-                    onClick = { isRunning = !isRunning },
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(if (isRunning) "Duraklat" else "Başlat")
-                }
-
-                FilledTonalButton(
-                    onClick = {
-                        secondsLeft = 20
-                        isRunning = true
-                    },
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Sıfırla")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
+            // Medical benefit box
             Card(
                 shape = RoundedCornerShape(14.dp),
                 colors = CardDefaults.cardColors(
@@ -404,454 +812,52 @@ fun LookAwayExercise(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Bilimsel İpucu: Ekrana yakından bakarken siliyer göz kasları kasılı kalır. 6 metre uzağa bakmak bu kasları sıfırlar.",
+                        text = benefit,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                FilledTonalButton(
-                    onClick = onFinishRoutine,
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Molayı Bitir")
-                }
-
-                Button(
-                    onClick = onNextStep,
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Sonraki: Kırpma 👉")
-                }
-            }
         }
     }
 }
 
-/**
- * 2. Step: Mindful Blinking animation (rehydrates cornea).
- */
 @Composable
-fun BlinkingExercise(
-    onNextStep: () -> Unit,
-    onPrevStep: () -> Unit
+fun ActionButtons(
+    onFinishSession: () -> Unit,
+    onNext: () -> Unit,
+    nextLabel: String
 ) {
-    var blinkCount by remember { mutableIntStateOf(0) }
-    val maxBlinks = 10
-
-    // Eye eyelid opening animation
-    val eyelidOpen = remember { Animatable(1f) }
-
-    LaunchedEffect(Unit) {
-        while (blinkCount < maxBlinks) {
-            delay(1200L)
-            // Close eyelid
-            eyelidOpen.animateTo(0.1f, animationSpec = tween(150, easing = LinearEasing))
-            delay(100L)
-            // Reopen eyelid
-            eyelidOpen.animateTo(1f, animationSpec = tween(200, easing = FastOutSlowInEasing))
-            blinkCount++
-        }
-    }
-
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val containerColor = MaterialTheme.colorScheme.primaryContainer
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-        )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+        FilledTonalButton(
+            onClick = onFinishSession,
+            shape = RoundedCornerShape(12.dp)
         ) {
-            Text(
-                text = "2. Adım: Bilinçli Göz Kırpma",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
+            Text("Molayı Bitir")
+        }
 
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Text(
-                text = "Ekrana odaklanırken göz kırpma sayısı %66 azalır. Gözyaşı tabakasını yenilemek için nazikçe kırpın.",
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Animated Eye Canvas
-            Box(
-                modifier = Modifier
-                    .size(200.dp)
-                    .clip(CircleShape)
-                    .background(containerColor.copy(alpha = 0.4f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Canvas(modifier = Modifier.size(160.dp)) {
-                    val center = Offset(size.width / 2f, size.height / 2f)
-                    val eyeWidth = size.width * 0.85f
-                    val eyeHeight = size.height * 0.45f * eyelidOpen.value
-
-                    // Eye white background
-                    drawOval(
-                        color = Color.White,
-                        topLeft = Offset(center.x - eyeWidth / 2f, center.y - eyeHeight / 2f),
-                        size = Size(eyeWidth, eyeHeight)
-                    )
-
-                    // Iris
-                    val irisRadius = (size.height * 0.22f).coerceAtMost(eyeHeight * 0.95f)
-                    drawCircle(
-                        color = primaryColor,
-                        radius = irisRadius,
-                        center = center
-                    )
-
-                    // Pupil
-                    drawCircle(
-                        color = Color.Black,
-                        radius = irisRadius * 0.5f,
-                        center = center
-                    )
-
-                    // Eye shine
-                    drawCircle(
-                        color = Color.White.copy(alpha = 0.8f),
-                        radius = irisRadius * 0.2f,
-                        center = Offset(center.x - irisRadius * 0.25f, center.y - irisRadius * 0.25f)
-                    )
-
-                    // Eye outline
-                    drawOval(
-                        color = primaryColor,
-                        topLeft = Offset(center.x - eyeWidth / 2f, center.y - eyeHeight / 2f),
-                        size = Size(eyeWidth, eyeHeight),
-                        style = Stroke(width = 3.dp.toPx())
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Text(
-                text = "Kırpma: $blinkCount / $maxBlinks",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            FilledTonalButton(
-                onClick = { blinkCount = 0 },
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(6.dp))
-                Text("Tekrar Başlat")
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                FilledTonalButton(
-                    onClick = onPrevStep,
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("👈 Geri")
-                }
-
-                Button(
-                    onClick = onNextStep,
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Sonraki: Kas Esnetme 👉")
-                }
-            }
+        Button(
+            onClick = onNext,
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text(nextLabel)
         }
     }
 }
 
-/**
- * 3. Step: Eye Roll / Infinity follow animation.
- */
-@Composable
-fun EyeRollExercise(
-    onNextStep: () -> Unit,
-    onPrevStep: () -> Unit
-) {
-    val infiniteTransition = rememberInfiniteTransition(label = "infinity_track")
-    val angleProgress by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = (2 * Math.PI).toFloat(),
-        animationSpec = infiniteRepeatable(
-            animation = tween(4000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "orbit_angle"
-    )
-
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val orbColor = CalmMintGlow
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "3. Adım: Göz Kaslarını Esnetme",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Text(
-                text = "Başınızı sabit tutun. Sadece göz bebeklerinizle hareket eden yeşil noktayı takip edin.",
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Animated Infinity / Circle Canvas
-            Box(
-                modifier = Modifier
-                    .size(240.dp, 160.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(MaterialTheme.colorScheme.surface),
-                contentAlignment = Alignment.Center
-            ) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val center = Offset(size.width / 2f, size.height / 2f)
-                    val a = size.width * 0.38f // Lemniscate width
-                    val b = size.height * 0.32f
-
-                    // Draw track points
-                    for (i in 0..100) {
-                        val t = (i / 100f) * (2 * Math.PI).toFloat()
-                        val scale = 2 / (3 - cos(2 * t))
-                        val x = center.x + a * scale * cos(t)
-                        val y = center.y + b * scale * sin(2 * t) / 2
-                        drawCircle(
-                            color = primaryColor.copy(alpha = 0.15f),
-                            radius = 2.dp.toPx(),
-                            center = Offset(x, y)
-                        )
-                    }
-
-                    // Calculate moving orb position on figure-8
-                    val t = angleProgress
-                    val scale = 2 / (3 - cos(2 * t))
-                    val orbX = center.x + a * scale * cos(t)
-                    val orbY = center.y + b * scale * sin(2 * t) / 2
-
-                    // Glow aura
-                    drawCircle(
-                        color = orbColor.copy(alpha = 0.35f),
-                        radius = 18.dp.toPx(),
-                        center = Offset(orbX, orbY)
-                    )
-
-                    // Sharp orb center
-                    drawCircle(
-                        color = orbColor,
-                        radius = 9.dp.toPx(),
-                        center = Offset(orbX, orbY)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                FilledTonalButton(
-                    onClick = onPrevStep,
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("👈 Geri")
-                }
-
-                Button(
-                    onClick = onNextStep,
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("Sonraki: Avuç Isıtma 👉")
-                }
-            }
-        }
-    }
-}
-
-/**
- * 4. Step: Palming & Warmth relaxation.
- */
-@Composable
-fun PalmingExercise(
-    onFinish: () -> Unit,
-    onPrevStep: () -> Unit
-) {
-    val infiniteTransition = rememberInfiniteTransition(label = "breath_pulse")
-    val breathScale by infiniteTransition.animateFloat(
-        initialValue = 0.85f,
-        targetValue = 1.25f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3500, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "breath_scale"
-    )
-
-    val isExpanding = breathScale > 1.05f
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "4. Adım: Avuç İçiyle Isıtma (Palming)",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Text(
-                text = "Avuçlarınızı birbirine sürterek ısıtın. Gözlerinizi kapatın ve sıcak avuçlarınızı baskı uygulamadan gözlerinizin üzerine koyun.",
-                style = MaterialTheme.typography.bodyMedium,
-                textAlign = TextAlign.Center,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Animated Breathing Aura
-            Box(
-                modifier = Modifier
-                    .size(200.dp)
-                    .clip(CircleShape)
-                    .background(
-                        Brush.radialGradient(
-                            listOf(
-                                SoftAmber.copy(alpha = 0.35f * breathScale),
-                                MaterialTheme.colorScheme.surface
-                            )
-                        )
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    drawCircle(
-                        color = SoftAmber.copy(alpha = 0.4f),
-                        radius = (size.width / 3f) * breathScale,
-                        style = Stroke(width = 4.dp.toPx())
-                    )
-                }
-
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        imageVector = Icons.Default.SelfImprovement,
-                        contentDescription = null,
-                        tint = SoftAmber,
-                        modifier = Modifier.size(36.dp)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = if (isExpanding) "Derin Nefes Al" else "Yavaşça Nefes Ver",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                FilledTonalButton(
-                    onClick = onPrevStep,
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text("👈 Geri")
-                }
-
-                Button(
-                    onClick = onFinish,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Text("Egzersizi Tamamla ✨")
-                }
-            }
-        }
-    }
-}
-
-/**
- * Completion celebration card.
- */
 @Composable
 fun CompletionCard(
+    totalSeconds: Int,
     onFinish: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(16.dp),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.primaryContainer
@@ -870,11 +876,11 @@ fun CompletionCard(
                 modifier = Modifier.size(64.dp)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "Tebrikler! Mola Tamamlandı 🌿",
-                style = MaterialTheme.typography.titleLarge,
+                text = "Gözleriniz Dinlendi! 🌿",
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
@@ -882,7 +888,7 @@ fun CompletionCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             Text(
-                text = "Gözleriniz dinlendi ve göz kaslarınız gevşedi. Ekran süresi sayacı sıfırlandı ve sonraki 20 dakikalık döngü başladı.",
+                text = "Bu seansla siliyer odak kaslarınızı gevşettiniz ve kornea nem tabakasını tazelediniz. Dijital göz yorgunluğunu önleme yolunda harika bir adım attınız!",
                 style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.85f)
@@ -892,15 +898,10 @@ fun CompletionCard(
 
             Button(
                 onClick = onFinish,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("finish_routine_button"),
-                shape = RoundedCornerShape(14.dp)
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Text(
-                    text = "Ana Ekrana Dön",
-                    fontWeight = FontWeight.Bold
-                )
+                Text("Harika, Çalışmaya Devam Et ✨")
             }
         }
     }

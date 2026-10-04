@@ -6,47 +6,66 @@
 
 ## 📲 UYGULAMAYI TELEFONUNUZA İNDİRİN
 
-En güncel, test edilmiş ve imzalanmış Android APK dosyasını tek tıkla indirmek için aşağıdaki yeşil butona veya bağlantıya dokunun:
+En güncel, test edilmiş ve imzalanmış Android APK dosyasını tek tıkla telefonunuza indirmek için aşağıdaki butona dokunun:
 
 <br />
 
-# [👉 📥 20-20-20-Goz-Sagligi.apk DOSYASINI İNDİR (23 MB) 👈](./apk/20-20-20-Goz-Sagligi.apk?raw=true)
+# [👉 📥 20-20-20-Goz-Sagligi.apk DOSYASINI İNDİR (23 MB) 👈](https://github.com/MellowDieds/20/raw/main/apk/20-20-20-Goz-Sagligi.apk)
 
 <br />
 
-[![Hemen İndir](https://img.shields.io/badge/📲_HEMEN_İNDİR-Android_APK_(Direkt_İndir)-2ea44f?style=for-the-badge&logo=android&logoColor=white)](./apk/20-20-20-Goz-Sagligi.apk?raw=true)
+[![Hemen İndir](https://img.shields.io/badge/📲_HEMEN_İNDİR-Android_APK_(Direkt_İndir)-2ea44f?style=for-the-badge&logo=android&logoColor=white)](https://github.com/MellowDieds/20/raw/main/apk/20-20-20-Goz-Sagligi.apk)
 
 <br />
 
-> ⚡ **Tek Tıkla Kurulum:**
-> 1. Yukarıdaki yeşil **"HEMEN İNDİR"** butonuna veya mavi yazıya dokunun.
-> 2. APK dosyası tarayıcınız tarafından anında indirilmeye başlayacaktır.
-> 3. İndirme bittiğinde bildirime veya dosyaya dokunup **"Yükle"** butonuna basın.
+> ⚡ **Telefondan Tek Tıkla Kurulum:**
+> 1. Yukarıdaki yeşil **"HEMEN İNDİR"** butonuna dokunun.
+> 2. APK dosyası telefonunuza hemen inmeye başlayacaktır.
+> 3. İndirme bittiğinde bildirime dokunup **"Yükle"** butonuna basın.
 > *(Telefonunuz "Bilinmeyen kaynaklardan yükleme" uyarısı verirse izin verin).*
 
 </div>
 
 ---
 
-Ekran kullanımına bağlı dijital göz yorgunluğunu (**Computer Vision Syndrome - CVS**) ve göz kuruluğunu azaltmak için geliştirilmiş, **20-20-20 kuralını** nazikçe hatırlatan ve eğitici animasyonlarla göz egzersizlerini öğreten modern Android uygulaması.
+Ekran kullanımına bağlı dijital göz yorgunluğunu (**Computer Vision Syndrome - CVS**) ve göz kuruluğunu azaltmak için geliştirilmiş, **20-20-20 kuralını** nazikçe hatırlatan ve **klinik göz dinlendirme egzersizleri** sunan modern Android uygulaması.
 
 ---
 
-## 📱 Temel Özellikler
+## 📱 Yenilenen & Gerçekten Faydalı Göz Egzersizleri
 
-- **Akıllı Ekran Takibi (Foreground Service):** Telefon ekranı açıkken (`ACTION_SCREEN_ON`) sessizce aktif ekran süresini sayar, ekran kapandığında (`ACTION_SCREEN_OFF`) otomatik olarak duraklar.
-- **Sıfır Rahatsızlık İlkesi:** Sayım süresince kullanıcıyı ses, titreşim veya tam ekran kapatıcı pencerelerle bölmez.
-- **Nazik Üst Bildirim (Heads-Up Alert):** 20 dakika dolduğunda ekranın üst kısmında zarif bir mola uyarısı belirir:
-  - **Ertele (5 Dk):** Molayı 5 dakika erteler (sürekli ertelemeyi önlemek için sınırlandırılabilir).
-  - **Göster / Yap:** Doğrudan animasyonlu açıklama ve egzersiz rehberini açar.
-- **Eğitici Animasyonlu Rehber:**
-  1. *Uzağa Odaklanma (20 Sn):* Siliyer göz kaslarını gevşetmek için 6 metre (20 feet) uzağa odaklanma simülasyonu.
-  2. *Bilinçli Göz Kırpma (10 Tekrar):* Gözyaşı tabakasını tazeleyen ritmik animasyon.
-  3. *Kas Esnetme:* Sonsuzluk döngüsünde hareket eden odak noktasını gözle takip etme.
-  4. *Avuç İçiyle Isıtma (Palming):* Derin nefes ve göz rahatlatma egzersizi.
-- **⚡ Hızlı Test Modu (20 Saniye):** 20 dakika beklemeden akışı ve bildirimleri saniyeler içinde test etme imkânı.
-- **İstatistik & Kayıt (Room Veritabanı):** Günlük mola sayısı, toplam aktif ekran süresi ve göz rahatlama skoru takibi.
-- **🔄 Uygulama İçi GitHub Güncelleme Denetleyicisi:** Ayarlar sekmesinden tek tıkla GitHub Releases üzerinden yeni sürüm kontrolü yapma, sürüm notlarını inceleme ve doğrudan yeni APK'yı indirip kurma desteği.
+Göz doktorlarının önerdiği ve hissedilebilir rahatlama sağlayan 5 interaktif egzersiz:
+
+1. **🔭 20-20-20 Uzağa Bakış (Siliyer Odak Kaslarını Gevşetme):**
+   - 20 saniye geri sayım eşliğinde telefonu bırakıp en az 6 metre (20 feet) uzağa odaklanma.
+   - **Titreşimli Bildirim:** Süre bittiğinde telefon titrer; ekrana bakmak zorunda kalmazsınız!
+   - *Faydası:* Sürekli 30-40 cm mesafedeki ekrana bakmaktan kramp giren odak kaslarını gevşetir, göz yorgunluğu kaynaklı baş ağrısını önler.
+
+2. **💧 Bilinçli Kırpma & Meibomian Masajı (Göz Kuruluğunu Anında Giderme):**
+   - Ekrana odaklanırken dakikada 18 olan kırpma refleksimiz 4'e düşer ve kornea kurur.
+   - 3 aşamalı döngü: *Kapat (2 sn) -> Kapakları Hafifçe Sık (Yağ bezlerini uyar) -> Aç ve Gevşet*.
+   - *Faydası:* Meibomian lipid bezlerini uyararak göz yüzeyine doğal koruyucu gözyaşı salgılanmasını sağlar, batma ve yanmayı giderir.
+
+3. **🎯 4 Yönlü Göz Kası Esnetme (Yukarı - Aşağı - Sol - Sağ):**
+   - Başınızı oynatmadan sadece göz bebekleriyle gösterilen yönlere bakış (3'er saniye).
+   - *Faydası:* Sabit noktaya bakmaktan tutulan 6 ekstraoküler göz kasını esnetir, göz arkasındaki zonklama ve baskıyı boşaltır.
+
+4. **🔍 Yakın-Uzak Odak Atlama (Akomodasyon Esnekliği):**
+   - 20 cm mesafedeki başparmak tırnağına odaklanma (3 sn) ➔ Parmağın arkasındaki en uzak nesneye odaklanma (3 sn).
+   - *Faydası:* Ekran karşısında odak kitlenmesini ve kalktıktan sonra oluşan geçici bulanık görmeyi (yalancı miyopi) çözer.
+
+5. **🧘 Sıcak Palming (Fotoreseptörleri Dinlendirme & Zihinsel Rahatlama):**
+   - 10 saniye boyunca avuç içlerini birbirine sürterek ısıtma ➔ Sıcak avuçları göz kapaklarına kubbe yapıp karanlıkta dinlenme.
+   - *Faydası:* Retinadaki rod ve kon fotoreseptörlerini ışık uyarımından arındırıp sıfırlar, göz sinirini yatıştırır.
+
+---
+
+## ⚡ Diğer Özellikler
+
+- **Akıllı Ekran Takibi (Foreground Service):** Ekran açıkken aktif süreyi sayar, kapandığında otomatik duraklar.
+- **Sıfır Rahatsızlık İlkesi:** Sayım süresince kullanıcıyı gereksiz yere bölmez.
+- **Nazik Üst Bildirim:** 20 dakika dolduğunda ekranın üstünde zarif erteleme ve mola seçeneği sunar.
+- **İstatistik & Kayıt (Room Veritabanı):** Günlük mola sayısı, toplam aktif ekran süresi ve göz rahatlama takibi.
 
 ---
 
