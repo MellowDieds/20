@@ -1,5 +1,33 @@
 # 🌿 20-20-20 Göz Sağlığı Mola Hatırlatıcısı (Android)
 
+---
+
+<div align="center">
+
+## 📲 UYGULAMAYI TELEFONUNUZA İNDİRİN
+
+En güncel, test edilmiş ve imzalanmış Android APK dosyasını tek tıkla indirmek için aşağıdaki yeşil butona veya bağlantıya dokunun:
+
+<br />
+
+# [👉 📥 20-20-20-Goz-Sagligi.apk DOSYASINI İNDİR (23 MB) 👈](./apk/20-20-20-Goz-Sagligi.apk?raw=true)
+
+<br />
+
+[![Hemen İndir](https://img.shields.io/badge/📲_HEMEN_İNDİR-Android_APK_(Direkt_İndir)-2ea44f?style=for-the-badge&logo=android&logoColor=white)](./apk/20-20-20-Goz-Sagligi.apk?raw=true)
+
+<br />
+
+> ⚡ **Tek Tıkla Kurulum:**
+> 1. Yukarıdaki yeşil **"HEMEN İNDİR"** butonuna veya mavi yazıya dokunun.
+> 2. APK dosyası tarayıcınız tarafından anında indirilmeye başlayacaktır.
+> 3. İndirme bittiğinde bildirime veya dosyaya dokunup **"Yükle"** butonuna basın.
+> *(Telefonunuz "Bilinmeyen kaynaklardan yükleme" uyarısı verirse izin verin).*
+
+</div>
+
+---
+
 Ekran kullanımına bağlı dijital göz yorgunluğunu (**Computer Vision Syndrome - CVS**) ve göz kuruluğunu azaltmak için geliştirilmiş, **20-20-20 kuralını** nazikçe hatırlatan ve eğitici animasyonlarla göz egzersizlerini öğreten modern Android uygulaması.
 
 ---
