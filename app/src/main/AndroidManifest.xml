@@ -50,6 +50,7 @@
             android:name=".service.BreakActionReceiver"
             android:exported="false">
             <intent-filter>
+                <action android:name="com.aistudio.eyecare.ACTION_DONE" />
                 <action android:name="com.aistudio.eyecare.ACTION_SNOOZE" />
                 <action android:name="com.aistudio.eyecare.ACTION_DISMISS" />
             </intent-filter>
@@ -60,6 +61,8 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
         </receiver>
     </application>

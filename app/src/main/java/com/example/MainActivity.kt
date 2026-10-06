@@ -1,5 +1,7 @@
 package com.example
 
+import android.app.NotificationManager
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -95,6 +97,8 @@ class MainActivity : ComponentActivity() {
         val openExercise = intent.getBooleanExtra(EXTRA_OPEN_EXERCISE, false) ||
                 intent.action == ACTION_OPEN_EXERCISE
         if (openExercise) {
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.cancel(EyeCareApplication.NOTIFICATION_ALERT_ID)
             viewModel.triggerBreakNow()
             viewModel.consumeExerciseNavigation()
         }

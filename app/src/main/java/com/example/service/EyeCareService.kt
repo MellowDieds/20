@@ -17,6 +17,7 @@ import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import com.example.EyeCareApplication
 import com.example.MainActivity
+import com.example.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -123,7 +124,7 @@ class EyeCareService : Service() {
         return NotificationCompat.Builder(this, EyeCareApplication.CHANNEL_SERVICE_ID)
             .setContentTitle("20-20-20 Göz Sağlığı Takibi")
             .setContentText(statusText)
-            .setSmallIcon(applicationInfo.icon)
+            .setSmallIcon(R.drawable.ic_notification_eye)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setSilent(true)
@@ -224,44 +225,46 @@ class EyeCareService : Service() {
                 val isScreenInteractive = powerManager.isInteractive
                 EyeCareStateHolder.setScreenOn(isScreenInteractive)
 
-                if (isScreenInteractive && !EyeCareStateHolder.isBreakAlertActive.value) {
-                    // Update wakelock to ensure CPU does not sleep when in other heavy apps
+                if (isScreenInteractive) {
                     if (wakeLock?.isHeld != true) {
                         updateWakeLock(true)
                     }
 
-                    if (deltaSeconds > 0) {
-                        val current = EyeCareStateHolder.currentElapsedSeconds.value + deltaSeconds
-                        EyeCareStateHolder.updateElapsedSeconds(current)
-                        EyeCareStateHolder.incrementScreenTimeToday()
+                    // Only count progress if an alert is not already awaiting user action
+                    if (!EyeCareStateHolder.isBreakAlertActive.value) {
+                        if (deltaSeconds > 0) {
+                            val current = EyeCareStateHolder.currentElapsedSeconds.value + deltaSeconds
+                            EyeCareStateHolder.updateElapsedSeconds(current)
+                            EyeCareStateHolder.incrementScreenTimeToday()
+                            lastTickRealtime = nowRealtime
+
+                            val isTestMode = app.preferences.isTestMode.value
+                            val targetSeconds = if (isTestMode) 20 else app.preferences.intervalMinutes.value * 60
+                            EyeCareStateHolder.setTargetDurationSeconds(targetSeconds)
+
+                            if (current % 5 == 0) {
+                                app.preferences.saveElapsedSeconds(current)
+                            }
+
+                            if (current >= targetSeconds) {
+                                showBreakAlertNotification()
+                            }
+                        }
+                    } else {
+                        // Alert is active: keep reference time current so we don't jump ahead
                         lastTickRealtime = nowRealtime
-
-                        val isTestMode = app.preferences.isTestMode.value
-                        val targetSeconds = if (isTestMode) 20 else app.preferences.intervalMinutes.value * 60
-                        EyeCareStateHolder.setTargetDurationSeconds(targetSeconds)
-
-                        // Save progress to disk every 5 seconds so killed processes remember progress
-                        if (current % 5 == 0) {
-                            app.preferences.saveElapsedSeconds(current)
-                        }
-
-                        if (current >= targetSeconds) {
-                            showBreakAlertNotification()
-                            scheduleBackupAlarm()
-                        }
                     }
                 } else {
-                    // Screen is OFF: reset reference time so we don't accumulate off-screen time!
+                    // Screen is genuinely OFF
                     lastTickRealtime = nowRealtime
                     updateWakeLock(false)
-                    if (app.preferences.resetOnScreenOff.value && EyeCareStateHolder.currentElapsedSeconds.value > 0) {
-                        EyeCareStateHolder.resetTimer()
-                        app.preferences.saveElapsedSeconds(0)
-                        app.preferences.saveSnoozeCount(0)
-                        app.preferences.saveAlertActive(false)
-                        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                        notificationManager.cancel(EyeCareApplication.NOTIFICATION_ALERT_ID)
-                        updateOngoingNotification()
+                    if (app.preferences.resetOnScreenOff.value && !EyeCareStateHolder.isBreakAlertActive.value) {
+                        if (EyeCareStateHolder.currentElapsedSeconds.value > 0) {
+                            EyeCareStateHolder.resetTimer()
+                            app.preferences.saveElapsedSeconds(0)
+                            app.preferences.saveSnoozeCount(0)
+                            updateOngoingNotification()
+                        }
                     }
                 }
 
@@ -273,39 +276,13 @@ class EyeCareService : Service() {
         }
     }
 
-    private fun scheduleBackupAlarm() {
-        try {
-            val intent = Intent(this, EyeCareService::class.java).apply {
-                action = ACTION_TRIGGER_NOW
-            }
-            val pendingIntent = PendingIntent.getService(
-                this,
-                999,
-                intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            // 5 second fallback if notification was cancelled
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                alarmManager.setAndAllowWhileIdle(
-                    AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                    SystemClock.elapsedRealtime() + 5000,
-                    pendingIntent
-                )
-            }
-        } catch (_: Exception) {}
-    }
-
     private fun showBreakAlertNotification() {
         EyeCareStateHolder.setBreakAlertActive(true)
 
         val app = application as EyeCareApplication
         app.preferences.saveAlertActive(true)
 
-        val maxSnoozes = app.preferences.maxSnoozes.value
-        val currentSnoozes = EyeCareStateHolder.currentSnoozeCount.value
-        val canSnooze = maxSnoozes == 0 || currentSnoozes < maxSnoozes
-
-        // 1. "Göster / Yap" Intent -> Opens Animated Exercise Screen
+        // 1. "Göster" Intent -> Opens Animated Exercise Screen
         val exerciseIntent = Intent(this, MainActivity::class.java).apply {
             action = MainActivity.ACTION_OPEN_EXERCISE
             putExtra(MainActivity.EXTRA_OPEN_EXERCISE, true)
@@ -318,41 +295,46 @@ class EyeCareService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // 2. "Ertele" Intent -> BroadcastReceiver
-        val snoozeIntent = Intent(this, BreakActionReceiver::class.java).apply {
-            action = BreakActionReceiver.ACTION_SNOOZE
+        // 2. "Yaptım" Intent -> BroadcastReceiver to record break and clear immediately
+        val doneIntent = Intent(this, BreakActionReceiver::class.java).apply {
+            action = BreakActionReceiver.ACTION_DONE
         }
-        val snoozePendingIntent = PendingIntent.getBroadcast(
+        val donePendingIntent = PendingIntent.getBroadcast(
             this,
-            102,
-            snoozeIntent,
+            103,
+            doneIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val snoozeButtonLabel = if (canSnooze) {
-            "Ertele (5 Dk)"
-        } else {
-            "Ertele (Limit Doldu)"
+        // 3. Delete Intent -> If dismissed, reset alert active
+        val dismissIntent = Intent(this, BreakActionReceiver::class.java).apply {
+            action = BreakActionReceiver.ACTION_DISMISS
         }
+        val dismissPendingIntent = PendingIntent.getBroadcast(
+            this,
+            104,
+            dismissIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         val builder = NotificationCompat.Builder(this, EyeCareApplication.CHANNEL_ALERT_ID)
-            .setSmallIcon(applicationInfo.icon)
-            .setContentTitle("🌿 20-20-20 Mola Zamanı!")
-            .setContentText("20 saniye boyunca 6 metre uzağa bakın.")
+            .setSmallIcon(R.drawable.ic_notification_eye)
+            .setContentTitle("🌿 20-20-20 Mola Zamanı")
+            .setContentText("Telefonu indirip 20 saniye 6 metre uzağa bakın.")
             .setStyle(
                 NotificationCompat.BigTextStyle().bigText(
-                    "Ekran süreniz doldu. Göz kaslarınızı gevşetmek için 20 saniye boyunca en az 6 metre (20 feet) uzağa bakın."
+                    "20 dakika ekran süresi doldu. Telefonu hafifçe indirip en az 6 metre (20 feet) uzağa bakın."
                 )
             )
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_REMINDER)
-            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setOngoing(true) // Stays permanently visible until user taps "Göster" or "Yaptım"
+            .setAutoCancel(false)
+            .setOnlyAlertOnce(true)
             .setContentIntent(exercisePendingIntent)
-            .addAction(0, "Göster / Yap", exercisePendingIntent)
-
-        if (canSnooze) {
-            builder.addAction(0, snoozeButtonLabel, snoozePendingIntent)
-        }
+            .setDeleteIntent(dismissPendingIntent)
+            .addAction(0, "Göster", exercisePendingIntent)
+            .addAction(0, "Yaptım", donePendingIntent)
 
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.notify(EyeCareApplication.NOTIFICATION_ALERT_ID, builder.build())

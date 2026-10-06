@@ -15,8 +15,23 @@ class BreakActionReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val app = context.applicationContext as EyeCareApplication
 
         when (intent.action) {
+            ACTION_DONE -> {
+                // User tapped "Yaptım" directly from the notification
+                EyeCareStateHolder.handleBreakCompleted()
+                app.preferences.saveElapsedSeconds(0)
+                app.preferences.saveAlertActive(false)
+                app.preferences.saveSnoozeCount(0)
+
+                CoroutineScope(Dispatchers.IO).launch {
+                    app.repository.recordCompletedBreak(20, "20-20-20 (Hızlı)")
+                }
+
+                Toast.makeText(context, "Tebrikler! Mola tamamlandı 🌿", Toast.LENGTH_SHORT).show()
+                notificationManager.cancel(EyeCareApplication.NOTIFICATION_ALERT_ID)
+            }
             ACTION_SNOOZE -> {
                 val app = context.applicationContext as EyeCareApplication
                 val prefs = app.preferences
@@ -55,6 +70,7 @@ class BreakActionReceiver : BroadcastReceiver() {
     }
 
     companion object {
+        const val ACTION_DONE = "com.aistudio.eyecare.ACTION_DONE"
         const val ACTION_SNOOZE = "com.aistudio.eyecare.ACTION_SNOOZE"
         const val ACTION_DISMISS = "com.aistudio.eyecare.ACTION_DISMISS"
     }
